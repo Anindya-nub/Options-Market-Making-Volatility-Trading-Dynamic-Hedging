@@ -1,0 +1,78 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Options market-making: hedging lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600&family=Spectral:wght@500;700&display=swap">
+<style>
+:root{--bg:#eef2f7;--pn:#fff;--ink:#17233a;--mut:#5d6b82;--ln:#d5dce8;--c1:#0f7b7b;--c2:#d98e04;--c3:#b4325a;--c4:#3a5bc7;--c5:#7a8aa3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0f1624;--pn:#17213a;--ink:#e6ecf7;--mut:#9aa8c2;--ln:#2b3858;--c1:#3cc0bd;--c2:#f0b13a;--c3:#ee6a93;--c4:#7f9bff;--c5:#8d9bb5}}
+:root[data-theme=dark]{--bg:#0f1624;--pn:#17213a;--ink:#e6ecf7;--mut:#9aa8c2;--ln:#2b3858;--c1:#3cc0bd;--c2:#f0b13a;--c3:#ee6a93;--c4:#7f9bff;--c5:#8d9bb5}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 'Public Sans',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.wrap{display:grid;grid-template-columns:210px 1fr;min-height:100vh;max-width:1180px;margin:auto}
+nav{padding:28px 18px;position:sticky;top:0;align-self:start}
+nav h1{font:700 21px/1.2 Spectral,serif;margin:0 0 6px}nav p{color:var(--mut);font-size:13px;margin:0 0 22px}
+nav button{display:block;width:100%;text-align:left;background:none;border:0;border-left:3px solid var(--ln);padding:8px 12px;color:var(--mut);font:inherit;cursor:pointer}
+nav button.on{border-color:var(--c1);color:var(--ink);font-weight:600}nav button:focus-visible,.seg button:focus-visible{outline:2px solid var(--c4);outline-offset:2px}
+main{padding:28px 24px 60px}section{display:none}section.on{display:block}
+h2{font:700 26px/1.25 Spectral,serif;margin:0 0 6px;max-width:30em}.lead{color:var(--mut);max-width:44em;margin:0 0 18px}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:6px;padding:16px;margin-bottom:16px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}.seg span{color:var(--mut);font-size:13px;margin-right:4px}
+.seg button{border:1px solid var(--ln);background:var(--pn);color:var(--ink);border-radius:4px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
+.seg button.on{background:var(--ink);color:var(--pn);border-color:var(--ink)}
+.ch{position:relative;height:340px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--ln)}th:first-child,td:first-child{text-align:left}
+.hm td{text-align:center;padding:6px 2px;border:1px solid var(--pn);color:#fff;font-size:12px}.tbl{overflow-x:auto}
+.f{margin:0 0 14px;max-width:46em}.f b{font-family:Spectral,serif;font-size:17px;display:block}
+@media(max-width:760px){.wrap{display:block}nav{position:static;padding:16px}nav button{display:inline-block;width:auto;border-left:0;border-bottom:3px solid var(--ln)}nav button.on{border-color:var(--c1)}main{padding:8px 14px 50px}}
+</style></head><body><div class="wrap">
+<nav><h1>Hedging lab</h1><p>Short and long ATM calls, 3 months, S=K=100, r=2%. 4,000 paths per scenario.</p>
+<button data-t="s0" class="on">Findings</button><button data-t="s1">Smile and surface</button><button data-t="s2">Hedge frequency</button><button data-t="s3">Hedging rules</button><button data-t="s4">Vol estimate error</button><button data-t="s5">Regimes and P&amp;L attribution</button></nav>
+<main>
+<section id="s0" class="on"><h2>Hedge less often than you think, but never not at all</h2><p class="lead">What discrete hedging, vol misestimation and transaction costs do to a market maker who sells (or buys) one vol point of edge.</p><div class="card"><!--FINDINGS--></div><div class="card tbl" id="gk"></div></section>
+<section id="s1"><h2>Recovered smiles match the ground-truth surface to under 0.1 vol points</h2><p class="lead">Quotes come from an SVI surface plus 0.2 cent price noise; implied vols are solved numerically, then refitted with SVI and checked for calendar and butterfly arbitrage.</p>
+<div class="card"><div class="seg" id="mt"><span>Maturity</span></div><div class="ch"><canvas id="c1"></canvas></div></div><div class="card tbl"><div id="hm"></div></div></section>
+<section id="s2"><h2>The best hedge frequency falls as costs rise</h2><p class="lead">Short call, time-based rebalancing, fixed 20% vol, quoted at 21%. Left to right: more hedging to less hedging.</p>
+<div class="card"><div class="seg" id="m2"><span>Metric</span></div><div class="ch"><canvas id="c2"></canvas></div></div><div class="card tbl" id="t2"></div></section>
+<section id="s3"><h2>At 10 bps and above, a band rule beats the calendar</h2><p class="lead">Time-based (every k steps), fixed-delta band, and Whalley-Wilmott band (width scales with gamma, price and cost; the vol-sensitive rule). 4 steps per day.</p>
+<div class="card"><div class="seg" id="b3"><span>Cost per trade</span></div><div class="ch"><canvas id="c3"></canvas></div></div></section>
+<section id="s4"><h2>Wrong hedge vol barely moves the mean but widens the tails</h2><p class="lead">Realised vol is 20%. Daily hedging, 5 bps. The mean stays near the edge net of cost; the risk is lowest when hedge vol equals realised vol, and it is worse when you underestimate.</p>
+<div class="card"><div class="ch"><canvas id="c4"></canvas></div></div></section>
+<section id="s5"><h2>Regime shifts show up as gamma-theta dispersion, not lost mean</h2><p class="lead">Constant 24% vol versus a two-state regime (15% / 30%, mean 2 months), hedged with a fixed 24% or a causal EWMA vol. Bars: mean P&amp;L by source for a short call, 5 bps costs.</p>
+<div class="card"><div class="seg" id="s5a"><span>Scenario</span></div><div class="seg" id="s5b"><span>Hedge vol</span></div><div class="ch"><canvas id="c5"></canvas></div></div><div class="card tbl" id="t5"></div></section>
+</main></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script>
+const D=/*DATA*/;
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim(),CL=['--c1','--c2','--c3','--c4','--c5'];
+const f2=x=>x.toFixed(2),$=id=>document.getElementById(id);let charts={};
+function mk(id,cfg){if(charts[id])charts[id].destroy();Chart.defaults.color=css('--mut');Chart.defaults.borderColor=css('--ln');Chart.defaults.font.family="'Public Sans',sans-serif";cfg.options=Object.assign({responsive:true,maintainAspectRatio:false},cfg.options||{});charts[id]=new Chart($(id),cfg)}
+function seg(id,opts,def,cb){const e=$(id);opts.forEach(([v,l])=>{const b=document.createElement('button');b.textContent=l;b.onclick=()=>{[...e.querySelectorAll('button')].forEach(x=>x.classList.remove('on'));b.classList.add('on');cb(v)};if(v===def)b.classList.add('on');e.appendChild(b)});cb(def)}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,section').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.t).classList.add('on');window.dispatchEvent(new Event('resize'))});
+// greeks table
+$('gk').innerHTML='<table><tr><th>ATM call Greek</th><th>Analytic</th><th>Central difference</th></tr>'+Object.entries(D.greeks).map(([k,v])=>`<tr><td>${k}</td><td>${v[0].toFixed(6)}</td><td>${v[1].toFixed(6)}</td></tr>`).join('')+`</table><p style="color:var(--mut);margin:8px 0 0">Implied-vol round trip, 200 vols from 5% to 150%: max error ${D.iv_roundtrip_maxerr.toExponential(1)}.</p>`;
+// surface
+const Ts=Object.keys(D.surface);
+seg('mt',Ts.map(t=>[t,(t*12).toFixed(0)+'m']),Ts[1],t=>{const s=D.surface[t],c=css('--c1');mk('c1',{type:'scatter',data:{datasets:[
+{label:'Recovered from prices',data:s.K.map((k,i)=>({x:k,y:s.iv[i]*100})),backgroundColor:css('--c2'),pointRadius:4},
+{label:'Ground truth',type:'line',data:s.K.map((k,i)=>({x:k,y:s.true[i]*100})),borderColor:css('--ink'),borderDash:[5,4],pointRadius:0},
+{label:'SVI fit',type:'line',data:s.K.map((k,i)=>({x:k,y:s.fit[i]*100})),borderColor:c,pointRadius:0}]},
+options:{scales:{x:{title:{display:true,text:'Strike'}},y:{title:{display:true,text:'Implied vol (%)'}}}}})});
+(()=>{const all=Ts.flatMap(t=>D.surface[t].iv),lo=Math.min(...all),hi=Math.max(...all),idx=[...Array(11).keys()].map(i=>i*2);
+let h='<table class="hm"><tr><th>IV %  /  Strike</th>'+idx.map(i=>`<th>${D.surface[Ts[0]].K[i]}</th>`).join('')+'</tr>';
+Ts.forEach(t=>{h+=`<tr><th>${(t*12).toFixed(0)}m</th>`+idx.map(i=>{const v=D.surface[t].iv[i],u=(v-lo)/(hi-lo);return `<td style="background:hsl(${200-u*170},60%,${42-u*6}%)">${(v*100).toFixed(1)}</td>`}).join('')+'</tr>'});
+$('hm').innerHTML=h+`</table><p style="color:var(--mut);margin:8px 0 0">Surface RMSE vs truth ${(D.surface_stats.rmse_iv_vs_true*1e4).toFixed(1)} bp of vol; calendar arbitrage-free: ${D.surface_stats.calendar_ok}; butterfly arbitrage-free on all maturities: ${D.surface_stats.butterfly_ok.every(Boolean)}.</p>`})();
+// frequency
+const ks=D.freq.ks,lab=ks.map(k=>(4/k).toFixed(k>4?2:0)+'/day'),bp=Object.keys(D.freq.res);
+const M={std:'P&L std',cvar5:'5% tail mean (CVaR)',mean:'Net mean P&L',cost:'Mean cost paid'};
+seg('m2',Object.entries(M),'cvar5',m=>{mk('c2',{type:'line',data:{labels:lab,datasets:bp.map((b,i)=>({label:b+' bps',data:ks.map(k=>D.freq.res[b][k][m]),borderColor:css(CL[i]),backgroundColor:css(CL[i]),tension:.2,pointRadius:3}))},options:{scales:{y:{title:{display:true,text:M[m]+' per option ($)'}},x:{title:{display:true,text:'Rebalances per day'}}}}})});
+$('t2').innerHTML='<table><tr><th>Cost</th><th>Best frequency by CVaR</th><th>CVaR there</th><th>Net mean there</th><th>Std there</th></tr>'+bp.map(b=>{let bk=ks.reduce((a,k)=>D.freq.res[b][k].cvar5>D.freq.res[b][a].cvar5?k:a);const v=D.freq.res[b][bk];return `<tr><td>${b} bps</td><td>${(4/bk).toFixed(bk>4?2:0)}/day</td><td>${f2(v.cvar5)}</td><td>${f2(v.mean)}</td><td>${f2(v.std)}</td></tr>`}).join('')+'</table>';
+// rules
+const rb=Object.keys(D.rules_cost);seg('b3',rb.map(b=>[b,b+' bps']),rb[1],b=>{const r=D.rules_cost[b],ks_=Object.keys(r);mk('c3',{type:'bar',data:{labels:ks_.map(k=>k.replace('time','time k=').replace('band','band ').replace('ww','WW γ=')),datasets:[{label:'5% tail mean (CVaR)',data:ks_.map(k=>r[k].cvar5),backgroundColor:css('--c3')},{label:'Net mean P&L',data:ks_.map(k=>r[k].mean),backgroundColor:css('--c1')},{label:'Std',data:ks_.map(k=>r[k].std),backgroundColor:css('--c5')}]},options:{scales:{y:{title:{display:true,text:'$ per option'}}}}})});
+// misvol
+const hv=Object.keys(D.misvol);mk('c4',{type:'line',data:{labels:hv.map(h=>(h*100).toFixed(0)+'%'),datasets:[{label:'Std, short',data:hv.map(h=>D.misvol[h].short.std),borderColor:css('--c3'),backgroundColor:css('--c3')},{label:'Std, long',data:hv.map(h=>D.misvol[h].long.std),borderColor:css('--c4'),backgroundColor:css('--c4')},{label:'Net mean, short',data:hv.map(h=>D.misvol[h].short.mean),borderColor:css('--c1'),backgroundColor:css('--c1'),borderDash:[5,4]}]},options:{scales:{x:{title:{display:true,text:'Hedge vol (realised = 20%)'}},y:{title:{display:true,text:'$ per option'}}}}});
+// regimes
+let sc='regime',vm='ewma';const AT=['edge','delta','gamma','theta_carry','vega','cost','resid'],AL={edge:'Quote edge',delta:'Delta slippage',gamma:'Gamma',theta_carry:'Theta + carry',vega:'Vega',cost:'Costs',resid:'Residual'};
+function r5(){const ks_=Object.keys(D.regime).filter(k=>k.startsWith(sc+'|'+vm+'|')),nm=k=>k.split('|')[2].replace('time','time k=').replace('band','band ').replace('ww','WW γ=');
+mk('c5',{type:'bar',data:{labels:ks_.map(nm),datasets:AT.map((a,i)=>({label:AL[a],data:ks_.map(k=>D.regime[k].attr[a]),backgroundColor:css(CL[i%5])}))},options:{scales:{x:{stacked:true},y:{stacked:true,title:{display:true,text:'Mean P&L, $ per option'}}}}});
+$('t5').innerHTML='<table><tr><th>Rule</th><th>Mean</th><th>Std</th><th>CVaR 5%</th><th>Cost</th><th>Trades</th></tr>'+ks_.map(k=>{const v=D.regime[k];return `<tr><td>${nm(k)}</td><td>${f2(v.mean)}</td><td>${f2(v.std)}</td><td>${f2(v.cvar5)}</td><td>${f2(v.cost)}</td><td>${v.trades.toFixed(0)}</td></tr>`}).join('')+'</table>'}
+seg('s5a',[['constant','Constant 24%'],['regime','Regime shifts']],'regime',v=>{sc=v;r5()});seg('s5b',[['fixed','Fixed 24%'],['ewma','EWMA estimate']],'ewma',v=>{vm=v;r5()});
+</script></body></html>
